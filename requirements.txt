@@ -1,0 +1,24 @@
+# Kivy Framework - Core cross-platform framework
+kivy==2.2.1
+
+# KivyMD - Material Design components
+kivymd==1.1.1
+
+# Plyer - Cross-platform API for platform-specific features (GPS, etc.)
+plyer==2.1.0
+
+# Kivy Garden MapView - OpenStreetMap integration
+kivy-garden.mapview==1.0.6
+
+# Python for Android dependencies
+# (These are used by Buildozer during the Android build process)
+# python-for-android
+# buildozer
+
+# Additional utilities
+# For mathematical calculations (haversine distance)
+# Note: math is part of Python standard library
+
+# For Android-specific features
+# pyjnius - Access Android Java classes from Python (installed by p4a)
+# android - Android-specific utilities (installed by p4a)
