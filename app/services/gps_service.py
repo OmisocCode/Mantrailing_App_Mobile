@@ -272,6 +272,7 @@ class MockGPSService(GPSService):
         self.mock_lon = start_lon
         self.mock_quality = 95
         self._mock_running = False
+        self._clock_event = None
 
     def start(self, on_location: Callable = None, on_status: Callable = None):
         """Avvia il GPS mock."""
@@ -286,12 +287,32 @@ class MockGPSService(GPSService):
         # Simula prima posizione
         self._simulate_location()
 
+        # Avvia timer per aggiornamenti continui (ogni 1 secondo)
+        try:
+            from kivy.clock import Clock
+            self._clock_event = Clock.schedule_interval(
+                lambda dt: self._simulate_location() if self._mock_running else None,
+                1.0  # Aggiorna ogni secondo
+            )
+        except ImportError:
+            # Se Kivy non è disponibile, almeno simula la prima posizione
+            pass
+
         return True
 
     def stop(self):
         """Ferma il GPS mock."""
         self.is_running = False
         self._mock_running = False
+
+        # Ferma il timer
+        if self._clock_event:
+            try:
+                from kivy.clock import Clock
+                self._clock_event.cancel()
+                self._clock_event = None
+            except ImportError:
+                pass
 
         if self.on_status_callback:
             self.on_status_callback('stopped', 'Mock GPS stopped')
