@@ -22,6 +22,9 @@ from kivy.properties import StringProperty
 # Importa i moduli dell'app
 from app.models.database import get_database
 from app.services.gps_service import get_gps_service
+from app.views.disperso_screen import DispersoScreen
+from app.views.cinofila_screen import CinofilaScreen
+from app.views.addestratore_screen import AddestratoreScreen
 
 
 class ModeSelectionScreen(Screen):
@@ -96,18 +99,15 @@ class ModeSelectionScreen(Screen):
 
     def goto_disperso_mode(self, instance):
         """Passa alla modalità disperso."""
-        # TODO: Implementare la schermata modalità disperso
-        print("Modalità Disperso selezionata")
+        self.manager.current = 'disperso'
 
     def goto_cinofila_mode(self, instance):
         """Passa alla modalità unità cinofila."""
-        # TODO: Implementare la schermata modalità cinofila
-        print("Modalità Unità Cinofila selezionata")
+        self.manager.current = 'cinofila'
 
     def goto_addestratore_mode(self, instance):
         """Passa alla modalità addestratore."""
-        # TODO: Implementare la schermata modalità addestratore
-        print("Modalità Addestratore selezionata")
+        self.manager.current = 'addestratore'
 
     def goto_settings(self, instance):
         """Passa alle impostazioni."""
@@ -154,10 +154,17 @@ class MantrailingApp(App):
         mode_selection_screen = ModeSelectionScreen()
         self.screen_manager.add_widget(mode_selection_screen)
 
+        # Aggiungi le schermate delle modalità operative
+        disperso_screen = DispersoScreen()
+        self.screen_manager.add_widget(disperso_screen)
+
+        cinofila_screen = CinofilaScreen()
+        self.screen_manager.add_widget(cinofila_screen)
+
+        addestratore_screen = AddestratoreScreen()
+        self.screen_manager.add_widget(addestratore_screen)
+
         # TODO: Aggiungere altre schermate
-        # - DispersoModeScreen
-        # - CinofilaModeScreen
-        # - AddestratoreModeSscreen
         # - SettingsScreen
         # - TrackListScreen
 
