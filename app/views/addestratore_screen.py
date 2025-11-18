@@ -19,74 +19,83 @@ try:
 except ImportError:
     MAPVIEW_AVAILABLE = False
     print("Warning: MapView not available. Map functionality will be limited.")
+    # Crea classi placeholder quando MapView non è disponibile
+    MapView = None
+    MapMarker = None
+    MapLayer = object  # Classe base fittizia
 
 from app.models.track import Track
 from app.services.gps_service import get_gps_service
 
 
-class TrackMapLayer(MapLayer):
-    """Layer personalizzato per disegnare il percorso sulla mappa."""
+# Definisci TrackMapLayer solo se MapView è disponibile
+if MAPVIEW_AVAILABLE:
+    class TrackMapLayer(MapLayer):
+        """Layer personalizzato per disegnare il percorso sulla mappa."""
 
-    def __init__(self, track=None, **kwargs):
-        super().__init__(**kwargs)
-        self.track = track
-        self.reposition()
+        def __init__(self, track=None, **kwargs):
+            super().__init__(**kwargs)
+            self.track = track
+            self.reposition()
 
-    def reposition(self):
-        """Ridisegna il percorso sulla mappa."""
-        if not self.track or self.track.is_empty():
-            return
+        def reposition(self):
+            """Ridisegna il percorso sulla mappa."""
+            if not self.track or self.track.is_empty():
+                return
 
-        mapview = self.parent
-        if not mapview:
-            return
+            mapview = self.parent
+            if not mapview:
+                return
 
-        self.canvas.clear()
+            self.canvas.clear()
 
-        # Disegna linee tra i punti con colori basati sulla qualità GPS
-        with self.canvas:
-            for i in range(len(self.track.points) - 1):
-                p1 = self.track.points[i]
-                p2 = self.track.points[i + 1]
+            # Disegna linee tra i punti con colori basati sulla qualità GPS
+            with self.canvas:
+                for i in range(len(self.track.points) - 1):
+                    p1 = self.track.points[i]
+                    p2 = self.track.points[i + 1]
 
-                # Converti coordinate GPS in coordinate schermo
-                x1, y1 = mapview.get_window_xy_from(p1.latitude, p1.longitude, mapview.zoom)
-                x2, y2 = mapview.get_window_xy_from(p2.latitude, p2.longitude, mapview.zoom)
+                    # Converti coordinate GPS in coordinate schermo
+                    x1, y1 = mapview.get_window_xy_from(p1.latitude, p1.longitude, mapview.zoom)
+                    x2, y2 = mapview.get_window_xy_from(p2.latitude, p2.longitude, mapview.zoom)
 
-                # Colore in base alla qualità GPS media del segmento
-                avg_quality = (p1.quality + p2.quality) / 2
-                color = self.get_quality_color(avg_quality)
+                    # Colore in base alla qualità GPS media del segmento
+                    avg_quality = (p1.quality + p2.quality) / 2
+                    color = self.get_quality_color(avg_quality)
 
-                Color(*color)
-                Line(points=[x1, y1, x2, y2], width=3)
+                    Color(*color)
+                    Line(points=[x1, y1, x2, y2], width=3)
 
-            # Disegna cerchi neri sui punti campionati
-            Color(0, 0, 0, 0.7)
-            for point in self.track.points:
-                x, y = mapview.get_window_xy_from(point.latitude, point.longitude, mapview.zoom)
-                Ellipse(pos=(x - 3, y - 3), size=(6, 6))
+                # Disegna cerchi neri sui punti campionati
+                Color(0, 0, 0, 0.7)
+                for point in self.track.points:
+                    x, y = mapview.get_window_xy_from(point.latitude, point.longitude, mapview.zoom)
+                    Ellipse(pos=(x - 3, y - 3), size=(6, 6))
 
-    @staticmethod
-    def get_quality_color(quality):
-        """
-        Restituisce il colore RGBA in base alla qualità GPS.
+        @staticmethod
+        def get_quality_color(quality):
+            """
+            Restituisce il colore RGBA in base alla qualità GPS.
 
-        Args:
-            quality: Qualità GPS (0-100)
+            Args:
+                quality: Qualità GPS (0-100)
 
-        Returns:
-            Tupla RGBA (r, g, b, a)
-        """
-        if quality >= 90:
-            return (0, 0, 1, 1)  # Blu
-        elif quality >= 70:
-            return (0, 1, 0, 1)  # Verde
-        elif quality >= 50:
-            return (1, 1, 0, 1)  # Giallo
-        elif quality >= 30:
-            return (1, 0.5, 0, 1)  # Arancione
-        else:
-            return (1, 0, 0, 1)  # Rosso
+            Returns:
+                Tupla RGBA (r, g, b, a)
+            """
+            if quality >= 90:
+                return (0, 0, 1, 1)  # Blu
+            elif quality >= 70:
+                return (0, 1, 0, 1)  # Verde
+            elif quality >= 50:
+                return (1, 1, 0, 1)  # Giallo
+            elif quality >= 30:
+                return (1, 0.5, 0, 1)  # Arancione
+            else:
+                return (1, 0, 0, 1)  # Rosso
+else:
+    # Classe placeholder quando MapView non è disponibile
+    TrackMapLayer = None
 
 
 class AddestratoreScreen(Screen):
@@ -196,6 +205,7 @@ class AddestratoreScreen(Screen):
             main_layout.add_widget(self.mapview)
         else:
             # Placeholder se MapView non disponibile
+            self.mapview = None  # Importante: imposta a None se non disponibile
             placeholder = BoxLayout(orientation='vertical', size_hint=(1, 0.65))
             placeholder.add_widget(Label(
                 text='[MAPPA]\n\nMapView non disponibile.\nInstalla kivy-garden.mapview\nper visualizzare la mappa.',
@@ -266,7 +276,7 @@ class AddestratoreScreen(Screen):
 
     def display_track_on_map(self):
         """Visualizza il percorso sulla mappa."""
-        if not self.track or not MAPVIEW_AVAILABLE or not self.mapview:
+        if not self.track or not MAPVIEW_AVAILABLE or not self.mapview or TrackMapLayer is None:
             return
 
         # Rimuovi layer precedente se esiste
