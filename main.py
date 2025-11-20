@@ -55,7 +55,7 @@ class ModeSelectionScreen(Screen):
         layout.add_widget(subtitle)
 
         # Contenitore per i pulsanti
-        buttons_layout = BoxLayout(orientation='vertical', spacing=15, size_hint=(1, 0.7))
+        buttons_layout = BoxLayout(orientation='vertical', spacing=15, size_hint=(1, 0.8))
 
         # Pulsante Modalità Disperso
         disperso_btn = Button(
@@ -77,7 +77,7 @@ class ModeSelectionScreen(Screen):
 
         # Pulsante Modalità Addestratore
         addestratore_btn = Button(
-            text='MODALITÀ ADDESTRATORE\n\nMonitora su mappa l\'esercitazione',
+            text='MODALITÀ ADDESTRATORE\n\nMonitora su griglia l\'esercitazione',
             font_size='16sp',
             background_color=(0.8, 0.4, 0.2, 1)
         )
@@ -85,15 +85,6 @@ class ModeSelectionScreen(Screen):
         buttons_layout.add_widget(addestratore_btn)
 
         layout.add_widget(buttons_layout)
-
-        # Pulsante impostazioni in basso
-        settings_btn = Button(
-            text='Impostazioni',
-            size_hint=(1, 0.1),
-            background_color=(0.5, 0.5, 0.5, 1)
-        )
-        settings_btn.bind(on_press=self.goto_settings)
-        layout.add_widget(settings_btn)
 
         self.add_widget(layout)
 
@@ -108,11 +99,6 @@ class ModeSelectionScreen(Screen):
     def goto_addestratore_mode(self, instance):
         """Passa alla modalità addestratore."""
         self.manager.current = 'addestratore'
-
-    def goto_settings(self, instance):
-        """Passa alle impostazioni."""
-        # TODO: Implementare la schermata impostazioni
-        print("Impostazioni selezionate")
 
 
 class MantrailingApp(App):
