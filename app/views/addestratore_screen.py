@@ -26,6 +26,7 @@ except ImportError:
 
 from app.models.track import Track
 from app.services.gps_service import get_gps_service
+from app.views.track_grid_view import TrackGridView
 
 
 # Definisci TrackMapLayer solo se MapView è disponibile
@@ -102,6 +103,7 @@ class AddestratoreScreen(Screen):
     """Schermata per la modalità addestratore."""
 
     is_tracking = BooleanProperty(False)
+    is_offline_mode = BooleanProperty(True)  # Default: modalità offline
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -113,7 +115,9 @@ class AddestratoreScreen(Screen):
         self.my_marker = None
         self.track_layer = None
         self.mapview = None
+        self.grid_view = None
         self.clock_event = None
+        self.display_container = None
 
         # Costruisci UI
         self.build_ui()
@@ -176,14 +180,23 @@ class AddestratoreScreen(Screen):
         self.track_info = Label(
             text='Nessun percorso caricato',
             font_size='10sp',
-            size_hint=(0.5, 1),
+            size_hint=(0.35, 1),
             color=(0.8, 0.8, 0.8, 1)
         )
         controls.add_widget(self.track_info)
 
+        # Toggle Offline/Online
+        self.mode_toggle_btn = Button(
+            text='Modalità: OFFLINE',
+            size_hint=(0.3, 1),
+            background_color=(0.3, 0.3, 0.6, 1)
+        )
+        self.mode_toggle_btn.bind(on_press=self.toggle_mode)
+        controls.add_widget(self.mode_toggle_btn)
+
         self.tracking_btn = Button(
             text='INIZIA TRACKING',
-            size_hint=(0.5, 1),
+            size_hint=(0.35, 1),
             background_color=(0.3, 0.7, 0.3, 1),
             disabled=True
         )
@@ -194,27 +207,79 @@ class AddestratoreScreen(Screen):
 
         main_layout.add_widget(header)
 
-        # Mappa o placeholder
+        # Container per visualizzazione (griglia o mappa)
+        self.display_container = BoxLayout(size_hint=(1, 0.65))
+
+        # Crea visualizzazione iniziale (griglia offline)
+        self._create_offline_view()
+
+        main_layout.add_widget(self.display_container)
+        self.add_widget(main_layout)
+
+    def _create_offline_view(self):
+        """Crea la visualizzazione offline (griglia cartesiana)."""
+        self.display_container.clear_widgets()
+
+        # Crea widget griglia
+        self.grid_view = TrackGridView()
+        self.display_container.add_widget(self.grid_view)
+
+        # Info modalità
+        info_label = Label(
+            text='Modalità OFFLINE - Griglia 100m\nSfondo nero, linee verdi\nInizio=Verde, Fine=Rosso',
+            size_hint=(1, None),
+            height=60,
+            font_size='10sp',
+            color=(0, 1, 0, 0.7),
+            pos_hint={'top': 1}
+        )
+        # Sovrapponi label in alto (non aggiungere al container, ma al grid_view)
+
+    def _create_online_view(self):
+        """Crea la visualizzazione online (mappa)."""
+        self.display_container.clear_widgets()
+
         if MAPVIEW_AVAILABLE:
+            # Crea MapView
             self.mapview = MapView(
                 zoom=15,
                 lat=45.4642,  # Milano default
                 lon=9.1900,
-                size_hint=(1, 0.65)
+                size_hint=(1, 1)
             )
-            main_layout.add_widget(self.mapview)
+            self.display_container.add_widget(self.mapview)
         else:
             # Placeholder se MapView non disponibile
-            self.mapview = None  # Importante: imposta a None se non disponibile
-            placeholder = BoxLayout(orientation='vertical', size_hint=(1, 0.65))
+            placeholder = BoxLayout(orientation='vertical')
             placeholder.add_widget(Label(
-                text='[MAPPA]\n\nMapView non disponibile.\nInstalla kivy-garden.mapview\nper visualizzare la mappa.',
+                text='[MODALITÀ ONLINE]\n\nMapView non disponibile.\nInstalla kivy-garden.mapview\no usa modalità OFFLINE.',
                 font_size='14sp',
                 color=(0.7, 0.7, 0.7, 1)
             ))
-            main_layout.add_widget(placeholder)
+            self.display_container.add_widget(placeholder)
 
-        self.add_widget(main_layout)
+    def toggle_mode(self, instance):
+        """Cambia tra modalità offline e online."""
+        self.is_offline_mode = not self.is_offline_mode
+
+        if self.is_offline_mode:
+            # Passa a offline
+            self.mode_toggle_btn.text = 'Modalità: OFFLINE'
+            self.mode_toggle_btn.background_color = (0.3, 0.3, 0.6, 1)
+            self._create_offline_view()
+
+            # Se c'è un percorso, visualizzalo sulla griglia
+            if self.track:
+                self.display_track_on_grid()
+        else:
+            # Passa a online
+            self.mode_toggle_btn.text = 'Modalità: ONLINE'
+            self.mode_toggle_btn.background_color = (0.6, 0.3, 0.3, 1)
+            self._create_online_view()
+
+            # Se c'è un percorso, visualizzalo sulla mappa
+            if self.track:
+                self.display_track_on_map()
 
     def on_enter(self):
         """Chiamato quando si entra nella schermata."""
@@ -255,8 +320,10 @@ class AddestratoreScreen(Screen):
             self.track_info.color = (0.2, 0.8, 0.2, 1)
             self.tracking_btn.disabled = False
 
-            # Visualizza su mappa
-            if MAPVIEW_AVAILABLE and self.mapview:
+            # Visualizza in base alla modalità
+            if self.is_offline_mode:
+                self.display_track_on_grid()
+            else:
                 self.display_track_on_map()
 
             # Info
@@ -274,8 +341,16 @@ class AddestratoreScreen(Screen):
             self.show_message("Errore", f"Errore importazione: {str(e)}")
             self.track = None
 
+    def display_track_on_grid(self):
+        """Visualizza il percorso sulla griglia offline."""
+        if not self.track or not self.grid_view:
+            return
+
+        # Imposta il percorso sulla griglia
+        self.grid_view.set_track(self.track)
+
     def display_track_on_map(self):
-        """Visualizza il percorso sulla mappa."""
+        """Visualizza il percorso sulla mappa online."""
         if not self.track or not MAPVIEW_AVAILABLE or not self.mapview or TrackMapLayer is None:
             return
 
@@ -371,21 +446,27 @@ class AddestratoreScreen(Screen):
 
     def on_gps_location(self, lat, lon, altitude, accuracy, speed):
         """Callback per nuove posizioni GPS."""
-        if not MAPVIEW_AVAILABLE or not self.mapview:
-            print(f"Posizione: {lat:.6f}, {lon:.6f}")
-            return
-
-        # Aggiorna o crea marker posizione
-        if self.my_marker:
-            self.my_marker.lat = lat
-            self.my_marker.lon = lon
+        if self.is_offline_mode:
+            # Modalità offline: aggiorna posizione sulla griglia
+            if self.grid_view:
+                self.grid_view.update_live_position(lat, lon)
         else:
-            self.my_marker = MapMarker(lat=lat, lon=lon)
-            # TODO: Usare icona blu per posizione addestratore
-            self.mapview.add_marker(self.my_marker)
+            # Modalità online: aggiorna posizione sulla mappa
+            if not MAPVIEW_AVAILABLE or not self.mapview:
+                print(f"Posizione: {lat:.6f}, {lon:.6f}")
+                return
 
-        # Opzionalmente centra la mappa sulla posizione
-        # self.mapview.center_on(lat, lon)
+            # Aggiorna o crea marker posizione
+            if self.my_marker:
+                self.my_marker.lat = lat
+                self.my_marker.lon = lon
+            else:
+                self.my_marker = MapMarker(lat=lat, lon=lon)
+                # TODO: Usare icona blu per posizione addestratore
+                self.mapview.add_marker(self.my_marker)
+
+            # Opzionalmente centra la mappa sulla posizione
+            # self.mapview.center_on(lat, lon)
 
     def on_gps_status(self, status_type, message):
         """Callback per stato GPS."""
